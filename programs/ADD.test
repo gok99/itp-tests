@@ -1,0 +1,14 @@
+ADD = Stmt.WHILE_DO(
+    lambda s: s["n"] != 0,
+    Stmt.SEQ(
+        Stmt.ASSIGN("n", lambda s: s["n"] - 1),
+        Stmt.ASSIGN("m", lambda s: s["m"] + 1)
+    )
+)
+
+{n = a ^ m = b} ADD {n = 0 ^ m = a + b}
+
+(a,b)
+
+P = lambda s: s["n"] == a and s["m"] == b
+Q = lambda s: s["n"] == 0 and s["m"] == a + b

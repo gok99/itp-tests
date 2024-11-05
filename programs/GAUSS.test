@@ -1,0 +1,25 @@
+GAUSS = Stmt.SEQ(
+    Stmt.ASSIGN("r", lambda s: 0),
+    Stmt.SEQ(
+        Stmt.ASSIGN("n", lambda s: 0),
+        Stmt.WHILE_DO(
+            lambda s: s["n"] != N,
+            Stmt.SEQ(
+                Stmt.ASSIGN("n", lambda s: s["n"] + 1),
+                Stmt.ASSIGN("r", lambda s: s["r"] + s["n"])
+            )
+        )
+    )
+)
+def sumUpTo(n):
+    if n == 0:
+        return 0
+    else:
+        return n + sumUpTo(n-1)
+
+# { True } GAUSS {r = sumUpTo N}
+
+()
+
+P = lambda s: True
+Q = lambda s: s["r"] == sumUpTo(N)

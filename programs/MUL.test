@@ -1,0 +1,17 @@
+MUL = Stmt.SEQ(
+    Stmt.ASSIGN("r", lambda s: 0),
+    Stmt.WHILE_DO(
+        lambda s: s["n"] != 0,
+        Stmt.SEQ(
+            Stmt.ASSIGN("r", lambda s: s["r"] + s["m"]),
+            Stmt.ASSIGN("n", lambda s: s["n"] - 1)
+        )
+    )
+)
+
+# {n = a ∧ m = b} MUL {r = a * b}
+
+(a, b)
+
+P = lambda s: s["n"] == a and s["m"] == b
+Q = lambda s: s["r"] == a * b

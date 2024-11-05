@@ -1,0 +1,11 @@
+COUNT_UP = Stmt.WHILE_DO(
+    lambda s: s["x"] != s["y"],
+    Stmt.ASSIGN("y", lambda s: s["y"] + 1)
+)
+
+# {x = a} COUNT_UP {x = a ∧ y = a}
+
+()
+
+P = lambda s: s["x"] == a
+Q = lambda s: s["x"] == a and s["y"] == a
