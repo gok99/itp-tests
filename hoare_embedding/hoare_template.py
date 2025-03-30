@@ -216,7 +216,7 @@ SWAP_PROG = Stmt.SEQ(
 # We want to prove the following Hoare Triple:
 # {x = a ∧ y = b} swap {x = b ∧ y = a}
 def swap_proof(a, b):
-     P = lambda s: s["x"] == a and s["y"] == b
+    P = lambda s: s["x"] == a and s["y"] == b
     Q = lambda s: s["x"] == b and s["y"] == a
     
     # Step 1: Assign temporary variable

@@ -1,0 +1,43 @@
+def proof():
+    P = lambda s: True  # Precondition
+    Q = lambda s: s["r"] == sumUpTo(N)  # Postcondition
+    
+    # The loop invariant: at each iteration, r contains sum up to n-1
+    I = lambda s: s["r"] == sumUpTo(s["n"])
+    
+    # Step 1: Initialize r to 0
+    # {True} r := 0 {r = sumUpTo(0)}
+    hoare_r = assign_intro("r", lambda s: 0, lambda s: s["r"] == sumUpTo(0))
+    
+    # Step 2: Initialize n to 0
+    # {r = sumUpTo(0)} n := 0 {r = sumUpTo(n)}
+    hoare_n = assign_intro("n", lambda s: 0, I)
+    
+    # Step 3: For the while loop body:
+    # {r = sumUpTo(n) ∧ n ≠ N} n := n + 1; r := r + n {r = sumUpTo(n)}
+    
+    # First inner assignment: n := n + 1
+    # {r = sumUpTo(n)} n := n + 1 {r = sumUpTo(n - 1)}
+    hoare_n_inc = assign_intro("n", lambda s: s["n"] + 1,
+        lambda s: s["r"] == sumUpTo(s["n"] - 1))
+    
+    # Second inner assignment: r := r + n
+    hoare_r_add = assign_intro("r", lambda s: s["r"] + s["n"], I)
+    
+    # Combine the two assignments in the loop body
+    hoare_body = seq_intro(hoare_n_inc, hoare_r_add)
+    
+    # Step 4: Create the while loop
+    # {I} while n ≠ N do body {I ∧ n = N}
+    hoare_while = while_intro(I, lambda s: s["n"] != N, hoare_body)
+    
+    # Step 5: Combine initialization with while loop
+    # First combine r and n initialization
+    hoare_init = seq_intro(hoare_r, hoare_n)
+    
+    # Then combine initialization with while loop
+    hoare_full = seq_intro(hoare_init, hoare_while)
+    
+    # Step 6: Use consequence rule to show the final postcondition holds
+    # When the loop terminates, n = N, so r = sumUpTo(N)
+    return consequence(P, hoare_full, Q)

@@ -1,0 +1,44 @@
+def proof(a, b):
+    # Initial condition: n = a ∧ m = b
+    P = lambda s: s["n"] == a and s["m"] == b
+    # Final condition: r = a * b
+    Q = lambda s: s["r"] == a * b
+    
+    # The loop invariant: r + n * m = a * b ∧ m = b
+    # This captures that in each iteration:
+    # - The sum of current result (r) and remaining multiplications (n * m) equals the target (a * b)
+    # - m remains constant at b
+    I = lambda s: s["r"] + s["n"] * s["m"] == a * b and s["m"] == b
+    
+    # Step 1: r := 0
+    # We need to prove {n = a ∧ m = b} r := 0 {r + n * m = a * b ∧ m = b}
+    hoare_init = assign_intro("r", lambda s: 0, I)
+    
+    # Step 2: For the while loop body, we need:
+    # {r + n * m = a * b ∧ m = b ∧ n ≠ 0} 
+    #   r := r + m;
+    #   n := n - 1
+    # {r + n * m = a * b ∧ m = b}
+    
+    # First, r := r + m
+    hoare_add = assign_intro("r", lambda s: s["r"] + s["m"],
+        lambda s: s["r"] + (s["n"] - 1) * s["m"] == a * b and s["m"] == b)
+    
+    # Then, n := n - 1
+    hoare_dec = assign_intro("n", lambda s: s["n"] - 1,
+        I)
+    
+    # Combine the body steps
+    hoare_body = seq_intro(hoare_add, hoare_dec)
+    
+    # Apply the while rule
+    # Note: The while condition is n ≠ 0
+    hoare_while = while_intro(I, lambda s: s["n"] != 0, hoare_body)
+    
+    # Finally, combine initialization with the while loop
+    hoare_full = seq_intro(hoare_init, hoare_while)
+    
+    # The while loop gives us: {I} while ... {I ∧ n = 0}
+    # We need to strengthen this to get our desired postcondition Q
+    # When n = 0, our invariant r + n * m = a * b reduces to r = a * b
+    return consequence(P, hoare_full, Q)

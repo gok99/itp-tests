@@ -1,0 +1,59 @@
+def count_up_proof(a):
+    # The invariant needs to capture that x remains constant (= a)
+    # and y is less than or equal to x during the loop
+    I = lambda s: s["x"] == a and s["y"] <= a
+    
+    # The loop condition
+    B = lambda s: s["x"] != s["y"]
+    
+    # The loop body increments y: y := y + 1
+    body = Stmt.ASSIGN("y", lambda s: s["y"] + 1)
+    
+    # Step 1: Prove the loop body maintains the invariant when the guard is true
+    # {I ∧ B} body {I}
+    # This means: {x = a z ∧ x ≠ y} y := y + 1 {x = a ∧ y ≤ a}
+    body_proof = assign_intro("y", lambda s: s["y"] + 1, I)
+    
+    # Step 2: Use while_intro to get:
+    # {I} while B do body {I ∧ ¬B}
+    # This means: {x = a ∧ y ≤ a} while x ≠ y do y := y + 1 {x = a ∧ y ≤ a ∧ x = y}
+    loop_proof = while_intro(I, B, body_proof)
+    
+    # Step 3: Use consequence to strengthen the postcondition and weaken the precondition
+    # The loop's postcondition I ∧ ¬B implies our desired postcondition Q
+    # Our precondition P implies the loop invariant I
+    P = lambda s: s["x"] == a
+    Q = lambda s: s["x"] == a and s["y"] == a
+    
+    return consequence(P, loop_proof, Q)
+
+
+
+def count_up_proof(a):
+    # The invariant needs to capture that x remains constant (= a)
+    # and y is less than or equal to x during the loop
+    I = lambda s: s["x"] == a and s["y"] <= a
+    
+    # The loop condition
+    B = lambda s: s["x"] != s["y"]
+    
+    # The loop body increments y: y := y + 1
+    body = Stmt.ASSIGN("y", lambda s: s["y"] + 1)
+    
+    # Step 1: Prove the loop body maintains the invariant when the guard is true
+    # {I ∧ B} body {I}
+    # This means: {x = a ∧ y <= a ∧ x != y} y := y + 1 {x = a ∧ y <= a}
+    body_proof = assign_intro("y", lambda s: s["y"] + 1, I)
+    
+    # Step 2: Use while_intro to get:
+    # {I} while B do body {I ∧ ¬B}
+    # This means: {x = a ∧ y ≤ a} while x ≠ y do y := y + 1 {x = a ∧ y ≤ a ∧ x = y}
+    loop_proof = while_intro(I, B, body_proof)
+    
+    # Step 3: Use consequence to strengthen the postcondition and weaken the precondition
+    # The loop's postcondition I ∧ ¬B implies our desired postcondition Q
+    # Our precondition P implies the loop invariant I
+    P = lambda s: s["x"] == a
+    Q = lambda s: s["x"] == a and s["y"] == a
+    
+    return consequence(P, loop_proof, Q)

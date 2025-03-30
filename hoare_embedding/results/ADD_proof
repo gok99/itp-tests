@@ -1,0 +1,33 @@
+def proof(a, b):
+    # Initial and final conditions
+    P = lambda s: s["n"] == a and s["m"] == b
+    Q = lambda s: s["n"] == 0 and s["m"] == a + b
+    
+    # Loop invariant: n + m = a + b
+    # This captures that the sum remains constant throughout the loop
+    I = lambda s: s["n"] + s["m"] == a + b
+    
+    # The loop condition
+    B = lambda s: s["n"] != 0
+    
+    # Step 1: Prove the loop body maintains the invariant
+    # {I ∧ B} body {I}
+    
+    # First assign n := n - 1
+    hoare_n = assign_intro("n", lambda s: s["n"] - 1,
+        lambda s: s["n"] + s["m"] == (a + b) - 1)
+    
+    # Then assign m := m + 1
+    hoare_m = assign_intro("m", lambda s: s["m"] + 1,
+        lambda s: s["n"] + s["m"] == a + b)
+    
+    # Combine the assignments
+    hoare_body = seq_intro(hoare_n, hoare_m)
+    
+    # Step 2: Apply the while rule
+    # {I} while B do body {I ∧ ¬B}
+    hoare_while = while_intro(I, B, hoare_body)
+    
+    # Step 3: Use consequence rule to connect precondition P to invariant I
+    # P → I, and (I ∧ ¬B) → Q
+    return consequence(P, hoare_while, Q)
