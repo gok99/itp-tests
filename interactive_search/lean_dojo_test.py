@@ -146,7 +146,7 @@ class ProofCoordinator:
 
 # Example usage:
 
-repo = LeanGitRepo("/home/gok99/Local/proof-synthesis/splean", "78ea2fb81b360e5f259988ffb752e2942bb46a4f")
+repo = LeanGitRepo("/home/gok99/Local/proof-synthesis/splean", "463c856194c85ad59ca461bf1097eed24e722ed0")
 theorem = Theorem(repo, "SPLean/Experiments/Misc.lean", "Lang.add_pointer_spec")
 # trace(repo, dst_dir="traced_splean")
 

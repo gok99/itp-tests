@@ -58,6 +58,12 @@ class ProofCoordinator:
             st.session_state.current_state = None
         if 'tactic_suggestions' not in st.session_state:
             st.session_state.tactic_suggestions = []
+        if 'proof_history' not in st.session_state:
+            st.session_state.proof_history = []
+        if 'history_index' not in st.session_state:
+            st.session_state.history_index = -1
+        if 'user_intuition' not in st.session_state:
+            st.session_state.user_intuition = ""
 
     def process_obligation(self, state: ProofState) -> Tuple[List[ProofState], List[ProofState]]:
         dojo = st.session_state.dojo
@@ -67,11 +73,19 @@ class ProofCoordinator:
         
         # Log current state
         st.session_state.proof_log.append(f"Processing goal: {state.obligation}")
-        
+
+        input_text = state.obligation
+        print("USER INTUITION", st.session_state.user_intuition)
+        if st.session_state.user_intuition.strip():
+            input_text += f"\n\nAdditional intuition: {st.session_state.user_intuition}"
+            st.session_state.proof_log.append(f"Using additional intuition: {st.session_state.user_intuition}")
+            
+        print(input_text)
+
         # Generate tactic suggestions
-        suggestions = self.base_runner.generate(input=state.obligation)
+        suggestions = self.base_runner.generate(input=input_text)
         suggestions = flatten([
-            self.pure_runner.generate(input=state.obligation) 
+            self.pure_runner.generate(input=input_text) 
             if tactic == "PURE" else [(tactic, conf)] 
             for tactic, conf in suggestions
         ])
@@ -166,6 +180,12 @@ class ProofCoordinator:
                         goal_text = pp_goal(goal=goal)
                         st.session_state.current_state = ProofState(new_tactics, goal_text, result)
                         
+                        # Add new state to history, truncate any future states
+                        if st.session_state.history_index < len(st.session_state.proof_history) - 1:
+                            st.session_state.proof_history = st.session_state.proof_history[:st.session_state.history_index + 1]
+                        st.session_state.proof_history.append(st.session_state.current_state)
+                        st.session_state.history_index = len(st.session_state.proof_history) - 1
+
                         # Update working queue for auto mode
                         self.working_proofs = Queue()
                         self.working_proofs.put(st.session_state.current_state)
@@ -188,6 +208,25 @@ class ProofCoordinator:
         except Exception as e:
             st.session_state.proof_log.append(f"! Exception '{e}' encountered running tactic: {tactic}")
             return False
+
+    # 4. Add a simpler backtrack method for the slider:
+    def backtrack_to_state(self, index: int) -> bool:
+        """Backtrack to a previous proof state"""
+        if 0 <= index < len(st.session_state.proof_history):
+            st.session_state.current_state = st.session_state.proof_history[index]
+            st.session_state.history_index = index
+            
+            # Update working queue for auto mode
+            self.working_proofs = Queue()
+            self.working_proofs.put(st.session_state.current_state)
+            
+            # Log the backtrack
+            st.session_state.proof_log.append(f"\n=====================================")
+            st.session_state.proof_log.append(f"Backtracked to state {index+1}/{len(st.session_state.proof_history)}")
+            st.session_state.proof_log.append(f"Current goal: {st.session_state.current_state.obligation}")
+            
+            return True
+        return False
 
     def initialize_proof(self, repo_url, commit_hash, theorem_file, theorem_name):
         """Initialize the proof process with the given theorem"""
@@ -225,9 +264,13 @@ class ProofCoordinator:
             st.session_state.initialized = True
             st.session_state.theorem_file = theorem_file
             st.session_state.theorem_name = theorem_name
+            st.session_state.proof_history = []
+            st.session_state.history_index = -1
             
             # Store current state for manual mode and generate suggestions
             st.session_state.current_state = initial_state
+            st.session_state.proof_history.append(initial_state)
+            st.session_state.history_index = 0
             
             return True
             
@@ -276,6 +319,12 @@ class ProofCoordinator:
         # Update current state to the first valid state if available
         if valid:
             st.session_state.current_state = valid[0]
+
+            # Add new state to history, truncate any future states
+            if st.session_state.history_index < len(st.session_state.proof_history) - 1:
+                st.session_state.proof_history = st.session_state.proof_history[:st.session_state.history_index + 1]
+            st.session_state.proof_history.append(st.session_state.current_state)
+            st.session_state.history_index = len(st.session_state.proof_history) - 1
             
         # Process invalid states
         for state in invalid:
@@ -318,7 +367,7 @@ def main():
         # Theorem selection
         st.subheader("Theorem")
         repo_url = st.text_input("Repository URL:", value="/home/gok99/Local/proof-synthesis/splean")
-        commit_hash = st.text_input("Commit hash:", value="78ea2fb81b360e5f259988ffb752e2942bb46a4f")
+        commit_hash = st.text_input("Commit hash:", value="463c856194c85ad59ca461bf1097eed24e722ed0")
         theorem_file = st.text_input("Theorem file path:", value="SPLean/Experiments/Misc.lean")
         theorem_name = st.text_input("Theorem name:", value="Lang.array_exists_spec")
         
@@ -333,7 +382,7 @@ def main():
             st.rerun()
 
     # Main content area - use 3 columns layout
-    col1, col2, col3 = st.columns([3, 2, 2])
+    col1, col2, col3 = st.columns([2, 4, 2])
     
     with col1:
         st.header("Proof Progress")
@@ -347,13 +396,46 @@ def main():
         st.header("Current Goal")
         
         if st.session_state.get('initialized', False) and not st.session_state.get('proof_found', False):
+            if len(st.session_state.proof_history) > 1:
+                st.markdown("### Proof History")
+                
+                # Display a slider to navigate through states
+                history_length = len(st.session_state.proof_history)
+                slider_val = st.slider(
+                    "Navigate through proof states", 
+                    min_value=0, 
+                    max_value=history_length-1, 
+                    value=st.session_state.history_index,
+                    key="history_slider"
+                )
+                
+                # Check if slider value changed
+                if slider_val != st.session_state.history_index:
+                    st.session_state.coordinator.backtrack_to_state(slider_val)
+                    st.rerun()
+                
+                # Show current position info
+                st.info(f"Current state: {slider_val+1}/{history_length}")
+
             # Show current goal
             if st.session_state.current_state:
                 st.code(st.session_state.current_state.obligation, language="lean")
             
+            # Add intuition input textbox
+            st.markdown("### Additional Intuition")
+            intuition = st.text_area(
+                "Input any additional intuition or hints to guide the proof:",
+                value=st.session_state.get('user_intuition', ""),
+                height=100,
+                key="intuition_input"
+            )
+            # Store the intuition in session state
+            st.session_state.user_intuition = intuition
+
             # Auto step button
             if st.button("Take Auto Step", type="primary"):
                 st.session_state.coordinator.step_proof()
+                st.session_state.user_intuition = ""
                 st.rerun()
                 
             # Manual tactic input
@@ -375,6 +457,15 @@ def main():
             
             progress = min(1.0, st.session_state.current_depth / st.session_state.max_depth)
             st.progress(progress)
+
+            if not st.session_state.get('proof_found', False) and len(st.session_state.proof_history) > 1:
+                # Display tactics that led to current state
+                if slider_val > 0:
+                    previous_tactics = st.session_state.proof_history[slider_val].tactics
+                    if previous_tactics:
+                        st.markdown("#### Tactics applied so far:")
+                        tactic_text = "\n".join(previous_tactics)
+                        st.code(tactic_text, language="lean")
             
             # Show suggested tactics
             if not st.session_state.get('proof_found', False):
